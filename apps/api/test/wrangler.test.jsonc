@@ -10,7 +10,10 @@
     "LOG_LEVEL": "error",
     "APP_VERSION": "test",
     "EMAIL_PROVIDER": "mock",
-    "DRIVE_PROVIDER": "mock"
+    "DRIVE_PROVIDER": "mock",
+    "AUTH_ALLOWED_EMAIL_DOMAINS": "example.test",
+    "AUTH_ELIGIBILITY_MODE": "roster",
+    "AUTH_OTP_RESEND_COOLDOWN_SECONDS": "0"
   },
   "d1_databases": [
     {

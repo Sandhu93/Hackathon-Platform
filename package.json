@@ -18,6 +18,7 @@
     "test": "pnpm -r run test",
     "test:e2e": "playwright test",
     "db:migrate:local": "pnpm --filter @hackathon/api run db:migrate:local",
+    "admin:bootstrap": "node scripts/bootstrap-admin.mjs",
     "db:validate": "node scripts/validate-migrations.mjs",
     "db:lock": "node scripts/validate-migrations.mjs --update-lock",
     "db:test-recovery": "node scripts/test-recovery.mjs",

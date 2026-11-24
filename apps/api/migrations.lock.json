@@ -1,3 +1,4 @@
 {
-  "0001_baseline.sql": "bc2f08eefaf7bf1f5c1f2e6f1e080c6405c57632610ad7262906e321d5dd10df"
+  "0001_baseline.sql": "bc2f08eefaf7bf1f5c1f2e6f1e080c6405c57632610ad7262906e321d5dd10df",
+  "0002_auth.sql": "d7489af5de7c6e8a265accf1308cae13b7fa7a08fdaf08d95a3977c97851b779"
 }

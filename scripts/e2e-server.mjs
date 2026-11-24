@@ -31,6 +31,39 @@ run(
   apiDir,
 );
 
+// Approved accounts for the sign-in tests. Every test gets its own address in every Playwright
+// project: a login code belongs to an address, so tests running in parallel must never share one
+// (they would overwrite each other's codes and trip the resend cooldown).
+// The throwaway database is recreated on every run, so these never reach a real environment.
+const seedUsers = ['desktop', 'mobile'].flatMap((project) => [
+  [`e2e-signin-${project}@example.test`, 'participant'],
+  [`e2e-wrong-${project}@example.test`, 'participant'],
+  [`e2e-perm-person-${project}@example.test`, 'participant'],
+  [`e2e-perm-admin-${project}@example.test`, 'admin'],
+]);
+const stamp = "strftime('%Y-%m-%dT%H:%M:%SZ', 'now')";
+run(
+  process.execPath,
+  [
+    wranglerBin,
+    'd1',
+    'execute',
+    'DB',
+    '--local',
+    '--persist-to',
+    state,
+    '--command',
+    seedUsers
+      .map(
+        ([email, role]) =>
+          `INSERT INTO users (id, email_normalized, display_name, role, status, mailbox_kind, version, created_at, updated_at) ` +
+          `VALUES (lower(hex(randomblob(16))), '${email}', 'E2E ${role}', '${role}', 'active', 'personal', 1, ${stamp}, ${stamp});`,
+      )
+      .join(' '),
+  ],
+  apiDir,
+);
+
 const dev = spawn(
   process.execPath,
   [

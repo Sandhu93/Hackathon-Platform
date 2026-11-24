@@ -1,12 +1,12 @@
 # Database
 
-Cloudflare D1 (SQLite) bound as `DB`. Business tables arrive from Milestone 01; Milestone 00 ships the migration machinery and a single baseline table.
+Cloudflare D1 (SQLite) bound as `DB`. Milestone 00 shipped the migration machinery and a baseline table; Milestone 01 adds authentication tables (`0002_auth.sql`). Event, team and submission tables arrive in later milestones.
 
 ## Conventions (apply to every migration)
 
 - **Timestamps**: UTC, stored as ISO-8601 text ending in `Z` (`2026-11-24T10:00:00Z`), with a `CHECK` on the shape. Deadlines are persisted in UTC; the event's IANA timezone is stored separately and used only for display.
 - **Strictness**: `STRICT` tables; explicit `NOT NULL`, `CHECK` and `UNIQUE` constraints. Constraints, not application code, are the last line of defence for uniqueness and capacity rules.
-- **Identifiers**: opaque, non-guessable IDs generated server-side (decided in Milestone 01); never accepted from clients as proof of ownership.
+- **Identifiers**: opaque, non-guessable IDs generated server-side (random 128-bit hex, decided in Milestone 01); never accepted from clients as proof of ownership.
 - **Queries**: parameter binding only (`prepare().bind()`); no string-built SQL. Bounded `LIMIT`, keyset or offset pagination, and an index for every filter/sort used.
 - **Multi-statement atomicity**: use `db.batch([...])` (a D1 transaction) or single conditional statements (`INSERT … SELECT … WHERE`, `UPDATE … WHERE`) for concurrency-sensitive writes.
 - **Portability**: stay within SQL that PostgreSQL also supports (`ON CONFLICT`, `RETURNING`, standard `CHECK`s); avoid SQLite-only functions in application queries. `STRICT` and `GLOB` in checks are SQLite-specific and are translated in a Postgres migration ([deployment.md](deployment.md#7-migration-strategy-off-cloudflare)).
@@ -22,6 +22,35 @@ Cloudflare D1 (SQLite) bound as `DB`. Business tables arrive from Milestone 01; 
 | `updated_at` | TEXT | NOT NULL, UTC ISO-8601 (`…Z`) |
 
 Seeded with `schema_baseline = 1`. Wrangler also maintains `d1_migrations` (applied migration names).
+
+### Authentication tables (migration `0002_auth.sql`)
+
+All `STRICT`; timestamps UTC ISO-8601 with a `GLOB` shape check. Secrets (login codes, session tokens, addresses and IPs in throttle/audit rows) are stored **only as keyed HMAC-SHA256 hex** (64 chars); see [security.md](security.md#authentication-design-milestone-01).
+
+**`users`**: the account table, which is also the eligibility roster.
+
+| Column                                    | Notes                                                                                                 |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `id`                                      | PK, server-generated                                                                                  |
+| `email_normalized`                        | `UNIQUE`, must equal `lower(...)`, 3–254 chars. The normalised address is the identity                |
+| `display_name`                            | nullable, 1–100 chars                                                                                 |
+| `role`                                    | `participant` (default) \| `admin`                                                                    |
+| `status`                                  | `active` (default) \| `suspended` \| `revoked`                                                        |
+| `mailbox_kind`                            | `personal` (default) \| `shared`; shared mailboxes cannot sign in and never count as an administrator |
+| `version`                                 | optimistic-concurrency token, starts at 1, incremented by every admin change                          |
+| `created_at`/`updated_at`/`last_login_at` | UTC timestamps (`last_login_at` nullable)                                                             |
+
+Index `users_role_status (role, status, mailbox_kind)` serves the "is there another active admin?" guard.
+
+**`auth_challenges`**: one-time email codes, keyed by address (not user) so `domain` mode can challenge an address with no user row yet. Columns: `id`, `email_normalized`, `code_hash` (HMAC of `challengeId:code`), `created_at`, `expires_at`, `attempts`, `max_attempts` (1–20), `consumed_at` (set when used, superseded, invalidated by an account change or its delivery failed; `NULL` = usable), `delivery_status` (`pending|sent|failed`), `source_hash`. A **partial unique index** `auth_challenges_one_active (email_normalized) WHERE consumed_at IS NULL` guarantees at most one usable code per address even under concurrent requests. Index on `expires_at` for purging.
+
+**`sessions`**: `id`, `user_id` → `users(id)`, `token_hash` (`UNIQUE`; HMAC of the cookie token), `created_at`, `last_seen_at`, `expires_at`, `revoked_at`, `revoked_reason` (`logout|revoke_all|admin_revoke|account_status`), `source_hash`. Partial index on active sessions per user; index on `expires_at`.
+
+**`audit_log`**: append-only by convention. `seq` (`AUTOINCREMENT`, the pagination cursor), `created_at`, `event_type`, `outcome`, `actor_user_id`, `target_user_id`, `subject_hash`, `source_hash`, `request_id`, `details` (≤ 1000 chars of small JSON; no secrets). Indexed by time, event type and target.
+
+**`rate_limits`**: fixed-window counters. PK `(bucket, window_start)`, `count`; the bucket name embeds a keyed hash, never an address or IP. Written with a guarded upsert (`INSERT … ON CONFLICT DO UPDATE … WHERE count < limit`) so a full bucket causes no write.
+
+**Retention.** Expired challenges, sessions and old rate-limit windows are purged opportunistically (roughly one in 25 sign-ins). They are inert once expired, so this only affects storage. Audit rows are kept.
 
 ## Migration workflow
 

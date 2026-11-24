@@ -11,7 +11,7 @@ Browser ──► Cloudflare edge
               └─ everything else ──► static assets (built React SPA, SPA fallback)
 ```
 
-`run_worker_first: ["/api/*"]` makes only API paths invoke the Worker; static files are served by the platform (free, unlimited) with their own headers from `apps/web/public/_headers`. One origin means no CORS for the app itself, simple cookies (`SameSite`, Milestone 01) and an easy CSRF story.
+`run_worker_first: ["/api/*"]` makes only API paths invoke the Worker; static files are served by the platform (free, unlimited) with their own headers from `apps/web/public/_headers`. One origin means no CORS for the app itself, simple cookies (`SameSite=Strict`, Milestone 01) and an easy CSRF story.
 
 Local development uses two processes with the same shape: Vite on `:5173` proxies `/api` to `wrangler dev` on `:8787`.
 
@@ -51,12 +51,12 @@ Handlers that accept JSON must call `parseJsonBody(c, schema)`: it enforces `Con
 
 ## Adapters
 
-| Adapter             | Interface                           | Local                                                                                   | Production                                  |
-| ------------------- | ----------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Institutional email | `EmailProvider.send(message)`       | `MockEmailProvider` (in-memory; logs masked recipient and subject only, never the body) | Milestone 01, once the mail system is known |
-| Google Drive        | `DriveStorageAdapter` (provisional) | `MockDriveStorageAdapter` (in-memory, safe-name validation)                             | Milestone 06                                |
+| Adapter             | Interface                           | Local                                                                                   | Production                                                                                                                                                                                                                     |
+| ------------------- | ----------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Institutional email | `EmailProvider.send(message)`       | `MockEmailProvider` (in-memory; logs masked recipient and subject only, never the body) | `HttpEmailProvider` (generic HTTPS JSON API with a Bearer key; Milestone 01). Selected by `EMAIL_PROVIDER=external`. Adapt or add a sibling class if the organisation's mail system differs (e.g. Microsoft Graph, SMTP relay) |
+| Google Drive        | `DriveStorageAdapter` (provisional) | `MockDriveStorageAdapter` (in-memory, safe-name validation)                             | Milestone 06                                                                                                                                                                                                                   |
 
-Mocks keep state per Worker isolate, which is fine for tests and single-process local dev. Milestone 01 must decide how developers read mock emails (e.g. a development-only inspection route or log line).
+Mocks keep state per Worker isolate, which is fine for tests and single-process local dev. Developers read mock emails at `GET /api/dev/mailbox`, a route that exists only when `ENVIRONMENT=development` and `EMAIL_PROVIDER=mock`. The mock mailbox is shared across the isolate (module level) so the route sees what the auth service sent.
 
 ## Web app
 

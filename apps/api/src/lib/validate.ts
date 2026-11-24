@@ -37,3 +37,17 @@ export async function parseJsonBody<S extends z.ZodType>(
   }
   return parsed.data;
 }
+
+/** Validate URL query parameters with the same standard error shape as JSON bodies. */
+export function parseQuery<S extends z.ZodType>(c: Context<HonoEnv>, schema: S): z.infer<S> {
+  const parsed = schema.safeParse(c.req.query());
+  if (!parsed.success) {
+    const details: FieldIssue[] = parsed.error.issues.map((issue) => ({
+      path: issue.path.map(String).join('.') || '(query)',
+      code: issue.code,
+      message: issue.message,
+    }));
+    throw new AppError('VALIDATION_ERROR', 'Request validation failed.', { details });
+  }
+  return parsed.data;
+}
