@@ -4,7 +4,12 @@ test.describe('smoke', () => {
   test('home page renders the shell without console errors', async ({ page }) => {
     const errors: string[] = [];
     page.on('console', (message) => {
-      if (message.type() === 'error') errors.push(message.text());
+      if (message.type() !== 'error') return;
+      // A signed-out visitor's session lookup is a deliberate 401, and browsers log failed
+      // requests as console errors. Ignore exactly that one; anything else still fails.
+      const { url } = message.location();
+      if (url.endsWith('/api/auth/session') && message.text().includes('401')) return;
+      errors.push(message.text());
     });
     page.on('pageerror', (error) => errors.push(error.message));
 

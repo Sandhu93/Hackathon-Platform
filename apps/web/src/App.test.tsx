@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { urlOf } from './test/url';
 
 function renderAt(path: string) {
   return render(
@@ -22,11 +23,30 @@ const health = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+/** Every page also asks /api/auth/session once; by default nobody is signed in. */
 function stubFetch(handler: () => Promise<Response> | Response) {
-  const fetchMock = vi.fn(() => Promise.resolve(handler()));
+  const fetchMock = vi.fn((input: RequestInfo | URL) =>
+    urlOf(input) === '/api/auth/session'
+      ? Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: { code: 'UNAUTHENTICATED', message: 'Sign in required.', requestId: 'r-1' },
+            }),
+            { status: 401, headers: { 'content-type': 'application/json' } },
+          ),
+        )
+      : Promise.resolve(handler()),
+  );
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }
+
+const healthCalls = (fetchMock: ReturnType<typeof stubFetch>) =>
+  fetchMock.mock.calls.filter(([input]) => urlOf(input) === '/api/health').length;
+
+beforeEach(() => {
+  stubFetch(() => new Response('{}', { status: 500 }));
+});
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -85,6 +105,21 @@ describe('application shell', () => {
     expect(document.title).toBe('System status · Hackathon Platform');
   });
 
+  it('does not reopen the menu when navigation returns to the page it was opened on', async () => {
+    const user = userEvent.setup();
+    renderAt('/');
+    const nav = screen.getByRole('navigation', { name: 'Primary' });
+    await user.click(screen.getByRole('button', { name: /open menu/i }));
+    expect(nav).toHaveAttribute('data-open', 'true');
+    await user.click(screen.getByRole('link', { name: 'System status' }));
+    await user.click(screen.getByRole('link', { name: 'Home' }));
+    expect(nav).toHaveAttribute('data-open', 'false');
+    expect(screen.getByRole('button', { name: /open menu/i })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
   it('shows a not-found page for unknown routes', () => {
     renderAt('/nope/nothing');
     expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
@@ -137,7 +172,7 @@ describe('status page', () => {
 
     await user.click(screen.getByRole('button', { name: /check again/i }));
     expect(await screen.findByText('All systems operational.')).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(healthCalls(fetchMock)).toBe(2);
   });
 
   it('handles a network failure without leaking details', async () => {

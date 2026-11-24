@@ -1,3 +1,5 @@
+export * from './auth';
+export * from './email';
 export * from './env';
 export * from './errors';
 export * from './health';

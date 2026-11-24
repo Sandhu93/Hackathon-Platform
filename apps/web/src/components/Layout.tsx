@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
+import { useAuth } from './AuthProvider';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Home', end: true },
@@ -9,14 +10,18 @@ const NAV_ITEMS = [
 const TITLES: Record<string, string> = {
   '/': 'Home',
   '/status': 'System status',
+  '/login': 'Sign in',
 };
 
 export function Layout() {
   const location = useLocation();
-  // The menu is "open" only for the path it was opened on, so navigating closes it without an effect.
-  const [menu, setMenu] = useState({ open: false, path: location.pathname });
-  const menuOpen = menu.open && menu.path === location.pathname;
-  const setMenuOpen = (open: boolean) => setMenu({ open, path: location.pathname });
+  const { state: auth, signOut } = useAuth();
+  // The menu is "open" only for the navigation it was opened on (every navigation gets a new
+  // location.key), so any navigation closes it without an effect, even one that returns to the
+  // same path (e.g. Home -> Sign in -> Home).
+  const [menu, setMenu] = useState({ open: false, key: location.key });
+  const menuOpen = menu.open && menu.key === location.key;
+  const setMenuOpen = (open: boolean) => setMenu({ open, key: location.key });
   const navId = useId();
   const mainRef = useRef<HTMLElement>(null);
   const firstRender = useRef(true);
@@ -36,11 +41,11 @@ export function Layout() {
   useEffect(() => {
     if (!menuOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenu({ open: false, path: location.pathname });
+      if (event.key === 'Escape') setMenu({ open: false, key: location.key });
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [menuOpen, location.pathname]);
+  }, [menuOpen, location.key]);
 
   return (
     <div className="app">
@@ -71,6 +76,22 @@ export function Layout() {
                   </NavLink>
                 </li>
               ))}
+              <li className="nav-account">
+                {auth.status === 'authenticated' ? (
+                  <>
+                    <span className="nav-account__who">{auth.user.email}</span>
+                    <button
+                      type="button"
+                      className="button button--secondary"
+                      onClick={() => void signOut()}
+                    >
+                      Sign out
+                    </button>
+                  </>
+                ) : auth.status === 'anonymous' ? (
+                  <NavLink to="/login">Sign in</NavLink>
+                ) : null}
+              </li>
             </ul>
           </nav>
         </div>
