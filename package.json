@@ -1,0 +1,41 @@
+{
+  "name": "hackathon-platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Internal hackathon hosting platform (Cloudflare Workers + D1 + React).",
+  "type": "module",
+  "packageManager": "pnpm@12.23.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" run dev",
+    "build": "pnpm --filter @hackathon/web run build && pnpm --filter @hackathon/api run build",
+    "typecheck": "pnpm -r run typecheck && tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r run test",
+    "test:e2e": "playwright test",
+    "db:migrate:local": "pnpm --filter @hackathon/api run db:migrate:local",
+    "db:validate": "node scripts/validate-migrations.mjs",
+    "db:lock": "node scripts/validate-migrations.mjs --update-lock",
+    "db:test-recovery": "node scripts/test-recovery.mjs",
+    "security:secrets": "node scripts/check-secrets.mjs",
+    "security:audit": "pnpm audit --prod",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm db:validate && pnpm security:secrets && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.50.0"
+  }
+}

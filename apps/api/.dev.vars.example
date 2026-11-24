@@ -1,0 +1,11 @@
+# Copy to `.dev.vars` (gitignored) for local development. Wrangler loads it automatically.
+# Nothing here is required for Milestone 00; the mock providers need no credentials.
+# Non-secret settings live in wrangler.jsonc `vars`; put only secrets and local overrides here.
+
+# Local override examples:
+# LOG_LEVEL=debug
+# APP_ORIGIN=http://localhost:5173
+
+# Secrets for real providers (later milestones). Never commit real values.
+# EMAIL_PROVIDER_API_KEY=
+# GOOGLE_SERVICE_ACCOUNT_JSON=

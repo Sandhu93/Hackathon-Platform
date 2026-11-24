@@ -1,0 +1,22 @@
+{
+  // Minimal config for the test runtime: same code, no static assets, fixed vars.
+  "name": "hackathon-platform-test",
+  "main": "../src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "vars": {
+    "ENVIRONMENT": "test",
+    "APP_ORIGIN": "http://localhost:5173",
+    "CORS_ALLOWED_ORIGINS": "http://localhost:3000",
+    "LOG_LEVEL": "error",
+    "APP_VERSION": "test",
+    "EMAIL_PROVIDER": "mock",
+    "DRIVE_PROVIDER": "mock"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hackathon-test",
+      "database_id": "00000000-0000-0000-0000-000000000001"
+    }
+  ]
+}

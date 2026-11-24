@@ -1,0 +1,10 @@
+# Host is Windows; keep repository content LF so tooling behaves the same everywhere.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary

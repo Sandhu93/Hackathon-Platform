@@ -1,0 +1,29 @@
+{
+  "name": "@hackathon/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "build": "wrangler deploy --dry-run --env=\"\" --outdir dist",
+    "build:envs": "wrangler deploy --dry-run --env staging --outdir dist/staging && wrangler deploy --dry-run --env production --outdir dist/production",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "db:migrate:local": "node ../../scripts/db-migrate-local.mjs",
+    "db:migrate:staging": "node ../../scripts/check-deploy-config.mjs staging && wrangler d1 migrations apply DB --env staging --remote",
+    "db:migrate:production": "node ../../scripts/check-deploy-config.mjs production && wrangler d1 migrations apply DB --env production --remote",
+    "deploy:staging": "node ../../scripts/check-deploy-config.mjs staging && pnpm --filter @hackathon/web run build && wrangler deploy --env staging",
+    "deploy:production": "node ../../scripts/check-deploy-config.mjs production && pnpm --filter @hackathon/web run build && wrangler deploy --env production"
+  },
+  "dependencies": {
+    "@hackathon/shared": "workspace:*",
+    "hono": "^4.12.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.8.0",
+    "@cloudflare/workers-types": "^5.0.0",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.124.0"
+  }
+}

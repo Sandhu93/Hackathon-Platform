@@ -1,0 +1,91 @@
+{
+  // Single Worker: serves /api/* and the built React app (static assets) from one origin.
+  // Top level = local development (`wrangler dev`). `staging` and `production` are separate
+  // environments with separate D1 databases; bindings and vars are NOT inherited by wrangler,
+  // so each environment declares everything it needs.
+  // Comments must stay on their own lines: scripts/check-deploy-config.mjs strips them naively.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hackathon-platform",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+  "vars": {
+    "ENVIRONMENT": "development",
+    "APP_ORIGIN": "http://localhost:5173",
+    "CORS_ALLOWED_ORIGINS": "",
+    "LOG_LEVEL": "debug",
+    "APP_VERSION": "dev",
+    "EMAIL_PROVIDER": "mock",
+    "DRIVE_PROVIDER": "mock"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hackathon-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "env": {
+    "staging": {
+      "name": "hackathon-platform-staging",
+      "assets": {
+        "directory": "../web/dist",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": ["/api/*"]
+      },
+      "observability": { "enabled": true },
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "APP_ORIGIN": "https://REPLACE_WITH_STAGING_ORIGIN",
+        "CORS_ALLOWED_ORIGINS": "",
+        "LOG_LEVEL": "info",
+        "APP_VERSION": "staging",
+        "EMAIL_PROVIDER": "mock",
+        "DRIVE_PROVIDER": "mock"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "hackathon-staging",
+          "database_id": "REPLACE_WITH_STAGING_D1_ID",
+          "migrations_dir": "migrations"
+        }
+      ]
+    },
+    "production": {
+      "name": "hackathon-platform-production",
+      "assets": {
+        "directory": "../web/dist",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": ["/api/*"]
+      },
+      "observability": { "enabled": true },
+      "vars": {
+        "ENVIRONMENT": "production",
+        "APP_ORIGIN": "https://REPLACE_WITH_PRODUCTION_ORIGIN",
+        "CORS_ALLOWED_ORIGINS": "",
+        "LOG_LEVEL": "info",
+        "APP_VERSION": "production",
+        "EMAIL_PROVIDER": "external",
+        "DRIVE_PROVIDER": "google"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "hackathon-production",
+          "database_id": "REPLACE_WITH_PRODUCTION_D1_ID",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
+}
