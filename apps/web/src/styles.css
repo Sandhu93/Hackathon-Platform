@@ -271,6 +271,55 @@ main:focus {
   font-weight: 600;
 }
 
+.auth-card {
+  max-width: 28rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  margin: 1rem 0;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field input {
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.field input[aria-invalid='true'] {
+  border-color: var(--error-border);
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.nav-account {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-account__who {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 @media (max-width: 720px) {
   .menu-button {
     display: inline-flex;

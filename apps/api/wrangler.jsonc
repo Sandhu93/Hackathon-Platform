@@ -22,7 +22,9 @@
     "LOG_LEVEL": "debug",
     "APP_VERSION": "dev",
     "EMAIL_PROVIDER": "mock",
-    "DRIVE_PROVIDER": "mock"
+    "DRIVE_PROVIDER": "mock",
+    "AUTH_ALLOWED_EMAIL_DOMAINS": "example.test",
+    "AUTH_ELIGIBILITY_MODE": "roster"
   },
   "d1_databases": [
     {
@@ -48,8 +50,12 @@
         "CORS_ALLOWED_ORIGINS": "",
         "LOG_LEVEL": "info",
         "APP_VERSION": "staging",
-        "EMAIL_PROVIDER": "mock",
-        "DRIVE_PROVIDER": "mock"
+        "EMAIL_PROVIDER": "external",
+        "EMAIL_API_URL": "https://REPLACE_WITH_EMAIL_API_URL",
+        "EMAIL_FROM_ADDRESS": "REPLACE_WITH_SENDER_ADDRESS",
+        "DRIVE_PROVIDER": "mock",
+        "AUTH_ALLOWED_EMAIL_DOMAINS": "REPLACE_WITH_INSTITUTIONAL_DOMAIN",
+        "AUTH_ELIGIBILITY_MODE": "roster"
       },
       "d1_databases": [
         {
@@ -76,7 +82,11 @@
         "LOG_LEVEL": "info",
         "APP_VERSION": "production",
         "EMAIL_PROVIDER": "external",
-        "DRIVE_PROVIDER": "google"
+        "EMAIL_API_URL": "https://REPLACE_WITH_EMAIL_API_URL",
+        "EMAIL_FROM_ADDRESS": "REPLACE_WITH_SENDER_ADDRESS",
+        "DRIVE_PROVIDER": "google",
+        "AUTH_ALLOWED_EMAIL_DOMAINS": "REPLACE_WITH_INSTITUTIONAL_DOMAIN",
+        "AUTH_ELIGIBILITY_MODE": "roster"
       },
       "d1_databases": [
         {

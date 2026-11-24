@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { ZodError } from 'zod';
+import type { EmailProvider } from './adapters/email';
 import { AppError, ConfigError, errorResponse } from './lib/errors';
 import { allowedMethodsFor } from './lib/allowed-methods';
 import type { LogSink } from './lib/logger';
@@ -11,12 +12,19 @@ import { corsPolicy } from './middleware/cors';
 import { requestBodyLimit } from './middleware/body-limit';
 import { originCheck } from './middleware/origin-check';
 import { noStore, securityHeaders } from './middleware/security-headers';
+import { adminRoutes } from './routes/admin';
+import { authRoutes } from './routes/auth';
+import { devRoutes } from './routes/dev';
 import { healthRoutes } from './routes/health';
 import type { HonoEnv } from './types';
 
 export interface CreateAppOptions {
   /** Redirect log lines (tests). Defaults to console. */
   logSink?: LogSink;
+  /** Clock override (tests). */
+  now?: () => Date;
+  /** Email provider override (tests). Production uses the configured adapter. */
+  emailProvider?: EmailProvider;
   /** Mount extra routes under /api. Used by tests to exercise the shared pipeline. */
   registerRoutes?: (api: Hono<HonoEnv>) => void;
 }
@@ -25,7 +33,14 @@ export function createApp(options: CreateAppOptions = {}): Hono<HonoEnv> {
   const app = new Hono<HonoEnv>({ strict: false });
 
   // Order matters. Everything below `context` can rely on requestId + logger.
-  app.use('*', context(options.logSink ? { logSink: options.logSink } : {}));
+  app.use(
+    '*',
+    context({
+      ...(options.logSink ? { logSink: options.logSink } : {}),
+      ...(options.now ? { now: options.now } : {}),
+      ...(options.emailProvider ? { emailProvider: options.emailProvider } : {}),
+    }),
+  );
   app.use('*', accessLog);
   app.use('*', securityHeaders);
   app.use('/api/*', noStore);
@@ -36,6 +51,9 @@ export function createApp(options: CreateAppOptions = {}): Hono<HonoEnv> {
 
   const api = new Hono<HonoEnv>();
   api.route('/', healthRoutes);
+  api.route('/', authRoutes);
+  api.route('/', adminRoutes);
+  api.route('/', devRoutes);
   options.registerRoutes?.(api);
   app.route('/api', api);
 

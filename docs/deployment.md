@@ -39,11 +39,28 @@ pnpm --filter @hackathon/api exec wrangler d1 create hackathon-staging
 node scripts/check-deploy-config.mjs staging
 ```
 
-Secrets (none are required for Milestone 00):
+Settings for sign-in (Milestone 01). Non-secret values go in `apps/api/wrangler.jsonc` under `env.<name>.vars`; the placeholder guard blocks deploys until they are real:
+
+| Variable                     | Meaning                                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ |
+| `AUTH_ALLOWED_EMAIL_DOMAINS` | Comma-separated institutional domains, e.g. `college.edu`                                        |
+| `AUTH_ELIGIBILITY_MODE`      | `roster` (default: only admin-approved addresses) or `domain` (any mailbox on an allowed domain) |
+| `EMAIL_PROVIDER`             | `external` in staging/production (`mock` is refused in production)                               |
+| `EMAIL_API_URL`              | https endpoint of the transactional-email API (POST JSON, Bearer key)                            |
+| `EMAIL_FROM_ADDRESS`         | Sender address (must be a verified sender at the provider)                                       |
+
+Optional tuning (defaults in parentheses): `AUTH_OTP_TTL_SECONDS` (600), `AUTH_OTP_MAX_ATTEMPTS` (5), `AUTH_OTP_RESEND_COOLDOWN_SECONDS` (60), `AUTH_EMAIL_TIMEOUT_MS` (8000), `AUTH_SESSION_TTL_SECONDS` (604800), `AUTH_SESSION_IDLE_TTL_SECONDS` (86400), and the `AUTH_RL_REQUEST_*` / `AUTH_RL_VERIFY_*` throttles (`EMAIL`, `SOURCE`, `GLOBAL`).
+
+Secrets (never in `wrangler.jsonc`):
 
 ```bash
-pnpm --filter @hackathon/api exec wrangler secret put EMAIL_PROVIDER_API_KEY --env staging   # later milestones
+# >= 32 random characters; signs login codes, session tokens and throttle keys.
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"   # generate; copy the output
+pnpm --filter @hackathon/api exec wrangler secret put AUTH_HMAC_SECRET --env staging
+pnpm --filter @hackathon/api exec wrangler secret put EMAIL_PROVIDER_API_KEY --env staging
 ```
+
+Rotating `AUTH_HMAC_SECRET` signs everyone out and voids pending codes; no data is lost. Until both secrets exist, sign-in answers a generic `503` (fail closed) and the log names the missing setting.
 
 ## 4. Deploy
 
@@ -80,6 +97,34 @@ Open the site in a browser: the shell loads, **System status** shows "All system
 | Lost `database_id` / account | Recreate the database, import the latest `wrangler d1 export … --remote` file with `wrangler d1 execute <DB> --remote --file backup.sql`, update `database_id`, redeploy.              |
 
 Take an export before every production migration: `wrangler d1 export <DB> --remote --env production --output backup-$(date +%F).sql`. Store it outside the repository (it will contain personal data from Milestone 01 on).
+
+## 5a. Create the first administrator (once per environment)
+
+There is deliberately no HTTP route that makes the first admin. Run this **from your machine** after migrating and deploying, with Cloudflare credentials available (section 2). Use the address of a real person's personal mailbox on an allowed domain.
+
+```bash
+# Local database (development):
+pnpm admin:bootstrap --email you@college.edu --name "Your Name"
+
+# Deployed database (confirm with --yes; the placeholder guard runs first):
+pnpm admin:bootstrap --email you@college.edu --name "Your Name" --remote --env staging --yes
+```
+
+It succeeds only when **no active admin exists** (the check and the write are one SQL statement, so two operators cannot both win), prints what it did, and records `admin.bootstrap` in the audit log. If an admin already exists it changes nothing and says so. All later admin changes (more admins, roster, suspension) go through the admin API; at least one active admin must always remain.
+
+## 5b. Manual real-mailbox test (required before email is "verified")
+
+Automated tests use a mock provider and fakes, so they cannot prove that real mail arrives. Before announcing sign-in to users, on **staging** with the real provider configured:
+
+1. Bootstrap yourself as admin (5a). Add a second real mailbox (a colleague, or a second address of yours) to the roster via `POST /api/admin/users`.
+2. In a browser, open `/login`, enter the second address, and confirm a code **arrives in that mailbox** (check spam/junk; note the delay). Sign in with it.
+3. Confirm: refresh keeps you signed in; **Sign out** returns to signed-out; the old cookie no longer works.
+4. Request a code for an address that is **not** on the roster and confirm nothing arrives and the page looks identical.
+5. Reuse the same code, and let one expire (10 minutes); both must be refused.
+6. In the Cloudflare dashboard (Workers → your Worker → Metrics) check CPU time per request stays well under 10 ms and there are no error spikes.
+7. Check sender reputation basics at your email provider (SPF/DKIM verified for `EMAIL_FROM_ADDRESS`'s domain), otherwise codes may be junked.
+
+Record the date, who tested and the result in `docs/milestones/STATUS.md`. Until then the status stays "production email integration **not verified**".
 
 ## 6. Free-plan limits
 

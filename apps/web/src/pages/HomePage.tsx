@@ -8,8 +8,8 @@ export function HomePage() {
         Find teammates, form a team and submit your project for the organisation&apos;s hackathons.
       </p>
       <p>
-        Sign-in, event registration and teams are being built in the next milestones. For now you
-        can check that the service is running.
+        Event registration and teams are being built in the next milestones. You can sign in with
+        your institutional email, and check that the service is running.
       </p>
       <p>
         <Link className="button" to="/status">

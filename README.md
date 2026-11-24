@@ -2,7 +2,7 @@
 
 Internal web application for running hackathons (200–1,000 participants): eligible employees register, find teammates, form teams of 1–4, and submit projects. Built on Cloudflare Workers, D1 and React.
 
-> **Status:** Milestone 00 (foundation) only — project skeleton, API plumbing, migrations, tests and deployment guide. There is no sign-in, event or team functionality yet. See [`docs/milestones/STATUS.md`](docs/milestones/STATUS.md).
+> **Status:** Milestone 00 (foundation) is accepted; Milestone 01 (institutional email sign-in, sessions, admin roster and roles) is implemented and awaiting acceptance. There is no event or team functionality yet. See [`docs/milestones/STATUS.md`](docs/milestones/STATUS.md).
 
 ## Stack
 
@@ -11,7 +11,7 @@ TypeScript · React + Vite · Hono on Cloudflare Workers · Cloudflare D1 (SQLit
 ```
 apps/api         Hono Worker (also serves the built web app as static assets)
 apps/web         React + Vite single-page app
-packages/shared  Zod schemas and types shared by both (API errors, health, config)
+packages/shared  Zod schemas and types shared by both (API errors, health, config, auth, email rules)
 scripts/         Migration validation, recovery drill, secret scan, deploy guards, E2E server
 docs/            Requirements, architecture, database, security, API, edge cases, deployment
 ```
@@ -35,23 +35,35 @@ Open http://localhost:5173. The **System status** page calls `GET /api/health`.
 
 No credentials are required: email and Google Drive use in-memory mocks locally. Optional local overrides go in `apps/api/.dev.vars` (copy from `.dev.vars.example`; it is git-ignored).
 
+### Signing in locally
+
+Sign-in is by emailed one-time code, and only approved addresses can sign in. Locally the "email" is the in-memory mock, and the allowed domain is `example.test` (`apps/api/wrangler.jsonc`).
+
+```bash
+pnpm admin:bootstrap --email you@example.test --name "You"   # one-time: creates the first admin in the local DB
+pnpm dev
+```
+
+Open http://localhost:5173/login, enter `you@example.test`, then read the code from http://localhost:8787/api/dev/mailbox (development-only; it does not exist in staging/production). Add more people through the admin API ([api-contracts](docs/api-contracts.md#administration-milestone-01)). Production setup, secrets and the real-mailbox test are in [deployment](docs/deployment.md).
+
 ## Commands
 
-| Command                     | What it does                                                                        |
-| --------------------------- | ----------------------------------------------------------------------------------- |
-| `pnpm dev`                  | Start API (:8787) and web (:5173)                                                   |
-| `pnpm check`                | Everything below except E2E: format, lint, types, migrations, secrets, tests, build |
-| `pnpm test`                 | Unit and integration tests (Vitest; API tests run inside the Workers runtime)       |
-| `pnpm test:e2e`             | Playwright smoke tests (first run: `pnpm exec playwright install chromium`)         |
-| `pnpm typecheck`            | `tsc` in every package (strict mode)                                                |
-| `pnpm lint` / `pnpm format` | ESLint (type-aware, a11y) / Prettier                                                |
-| `pnpm build`                | Build the web app, then bundle the Worker (dry run, no deploy)                      |
-| `pnpm db:migrate:local`     | Apply migrations to the local D1 database                                           |
-| `pnpm db:validate`          | Static checks on migration files (naming, immutability, forbidden statements)       |
-| `pnpm db:lock`              | Record hashes of new migrations after review                                        |
-| `pnpm db:test-recovery`     | Backup → restore drill on throwaway local databases                                 |
-| `pnpm security:secrets`     | Scan the working tree for committed secrets                                         |
-| `pnpm security:audit`       | `pnpm audit --prod`                                                                 |
+| Command                     | What it does                                                                            |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| `pnpm dev`                  | Start API (:8787) and web (:5173)                                                       |
+| `pnpm check`                | Everything below except E2E: format, lint, types, migrations, secrets, tests, build     |
+| `pnpm test`                 | Unit and integration tests (Vitest; API tests run inside the Workers runtime)           |
+| `pnpm test:e2e`             | Playwright smoke and sign-in tests (first run: `pnpm exec playwright install chromium`) |
+| `pnpm typecheck`            | `tsc` in every package (strict mode)                                                    |
+| `pnpm lint` / `pnpm format` | ESLint (type-aware, a11y) / Prettier                                                    |
+| `pnpm build`                | Build the web app, then bundle the Worker (dry run, no deploy)                          |
+| `pnpm db:migrate:local`     | Apply migrations to the local D1 database                                               |
+| `pnpm admin:bootstrap`      | Create the first administrator (only when none exists); see deployment guide            |
+| `pnpm db:validate`          | Static checks on migration files (naming, immutability, forbidden statements)           |
+| `pnpm db:lock`              | Record hashes of new migrations after review                                            |
+| `pnpm db:test-recovery`     | Backup → restore drill on throwaway local databases                                     |
+| `pnpm security:secrets`     | Scan the working tree for committed secrets                                             |
+| `pnpm security:audit`       | `pnpm audit --prod`                                                                     |
 
 ## Documentation
 

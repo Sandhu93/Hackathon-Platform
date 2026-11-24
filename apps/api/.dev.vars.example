@@ -1,11 +1,17 @@
 # Copy to `.dev.vars` (gitignored) for local development. Wrangler loads it automatically.
-# Nothing here is required for Milestone 00; the mock providers need no credentials.
+# Local development needs nothing here: the mock email provider needs no credentials and a
+# fixed development-only signing secret is used when AUTH_HMAC_SECRET is unset.
 # Non-secret settings live in wrangler.jsonc `vars`; put only secrets and local overrides here.
 
 # Local override examples:
 # LOG_LEVEL=debug
 # APP_ORIGIN=http://localhost:5173
 
-# Secrets for real providers (later milestones). Never commit real values.
+# Secrets. Never commit real values. In staging/production set them with
+# `wrangler secret put <NAME> --env <staging|production>`, never in wrangler.jsonc.
+# AUTH_HMAC_SECRET: >= 32 random chars; signs login codes, session tokens and throttle keys.
+#   Generate one with:  node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+#   Rotating it signs everyone out and invalidates pending codes (no data is lost).
+# AUTH_HMAC_SECRET=
 # EMAIL_PROVIDER_API_KEY=
 # GOOGLE_SERVICE_ACCOUNT_JSON=
